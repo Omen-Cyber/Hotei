@@ -8,7 +8,7 @@ import os
 import pathlib
 import zipfile
 from json import dumps
-
+import traceback
 import yara
 
 
@@ -63,7 +63,7 @@ class Matching:
                         print("Error with file:", self.curr_path)
                         continue
                     if self.rules.check_extension(self.curr_path, size):
-                        self.files_analyzed += 1  # TODO: Count zip file and files in zip?
+                        self.files_analyzed += 1 # Increment the number of files we have analyzed
                         # Get the extension
                         _, ext = os.path.splitext(self.curr_path)
                         # If the file is compressed
@@ -74,14 +74,16 @@ class Matching:
                             print("Evaluating: ", self.curr_path)
                             try:
                                 self.yara_match.match(
-                                    self.curr_path,
+                                    filepath=self.curr_path,
                                     callback=self.__scan_file,
                                     which_callbacks=yara.CALLBACK_MATCHES,
                                     timeout=30)
                                 self.files_analyzed += 1
-                            except:
+                            except Exception as e:
                                 print("Can't open :", self.curr_path)
-        return self.match_array.copy()
+                                traceback.print_exc()
+
+        return self.match_array.copy(),self.files_analyzed
 
     def __scan_file(self, data):
         file_match = {'file_name': self.curr_path, "rules": set([]), "matches": set([]), "total": 0}

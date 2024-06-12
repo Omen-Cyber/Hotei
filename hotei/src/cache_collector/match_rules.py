@@ -93,33 +93,26 @@ class MatchRules:
             print("OS type not supported")
             exit(1)
 
-    def gather_yara_rules(self, rules_path: pathlib.Path):
+    def gather_yara_rules(self, rules_path: str):
         try:
             rules_dict = {}
-            rules_path = rules_path.resolve()
-            yara_rules_path = rules_path / "yara_rules"
-            print("Finding yara rules at:", yara_rules_path)
-            if self.yara_rules['names'] is not None:
-                rules = self.yara_rules['names']
-                for r in rules:
-                    rules_dict[r] = str(yara_rules_path / f"{r}.yara")
-                    print("Loaded yara rule by name:", rules_dict[r])
+            print("Finding yara rules at:", rules_path)
+            with open(rules_path + '/yara_rules.json', 'r') as yr:
+                for line in yr:
+                    if "#" not in line:
+                        jl = json.loads(line)
+                        if self.yara_rules is not None:
+                            if jl['collection'] in self.yara_rules:
+                                rules_dict[jl['rule_name']] = str(rules_path + "/" + jl['file'])
+                                print("Loaded yara rule:", rules_dict[jl['rule_name']])
+                        else:
+                            rules_dict[jl['rule_name']] = str(rules_path + "/" + jl['file'])
+                            print("Loaded yara rule:", rules_dict[jl['rule_name']])
 
-            elif self.yara_rules['secret_types'] is not None:
-                for st in self.yara_rules['secret_types']:
-                    yrj_path = yara_rules_path / "yara_rules.json"
-                    with yrj_path.open() as yr:
-                        for line in yr:
-                            if "#" not in line:
-                                jl = json.loads(line)
-                                if jl['collection'] == st:
-                                    rules_dict[jl['rule_name']] = str(rules_path / jl['file'])
-                                    print("Loaded yara rule:", rules_dict[jl['rule_name']])
-
-            things = yara.compile(filepaths=rules_dict)
-            return things
+            rules_compiled = yara.compile(filepaths=rules_dict)
+            return rules_compiled
 
         except Exception as e:
             print("Failed to gather yara rules: ", e)
             traceback.print_exc()
-            exit()
+            exit(1)
